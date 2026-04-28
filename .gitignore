@@ -1,0 +1,35 @@
+# Run data (large, regenerable)
+manifold_sim/runs_emergent/
+manifold_sim/runs_coupled/
+manifold_sim/runs/
+
+# Logs and generated data
+manifold_sim/roll_log.jsonl
+manifold_sim/roll_scout.log
+manifold_sim/reproduce_results.json
+manifold_sim/sweep_12tone_results.json
+
+# Audio output
+manifold_sim/audio_output/
+
+# Python
+__pycache__/
+*.pyc
+
+# Reports (HTML generated from runs)
+manifold_sim/twist_report_*.html
+
+# Correspondence (private)
+manifold_sim/correspondence/
+
+# Inbox
+Opus_4.6_Inbox/
+
+# Claude Code internal
+.claude/
+
+# System
+.Trash-1000/
+
+# Stray directory
+Opus_4.6_Inbox /
