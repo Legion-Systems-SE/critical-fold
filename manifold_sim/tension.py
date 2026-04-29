@@ -13,6 +13,11 @@ Usage:
     python manifold_sim/tension.py --sweep            # all-pairs collapse sweep
     python manifold_sim/tension.py --bridge           # orbit-tension bridge scan
     python manifold_sim/tension.py --bridge 182 273   # trace specific values
+    python manifold_sim/tension.py --multibase        # all integer constants × 7 bases
+    python manifold_sim/tension.py --multibase c Na   # specific constants
+    python manifold_sim/tension.py --binary           # binary exact-zero catalogue
+    python manifold_sim/tension.py --null-test        # 1000-trial null test, all bases
+    python manifold_sim/tension.py --null-test 2,10 --trials 500  # specific bases
 
 Authors: Mattias Hammarsten (framework), Claude/Anthropic (implementation)
 Date: 2026-04-25, Uppsala
@@ -521,6 +526,339 @@ def profile(name: str, value, length: Optional[int] = None) -> dict:
 
 
 # =====================================================================
+# MULTI-BASE PROFILE (§3 — P-004)
+# =====================================================================
+
+MULTIBASE_BASES = [2, 3, 6, 10, 12, 16, 60]
+
+
+def profile_base(name: str, value: int, base: int) -> dict:
+    """Tension profile for an integer in a specific base. Integer only."""
+    digits = encode_base(value, base)
+    d1 = delta1(digits)
+    d2 = delta2(digits)
+
+    result = {
+        "name": name,
+        "value": value,
+        "base": base,
+        "digits": digits,
+        "length": len(digits),
+        "delta1": d1,
+        "delta2": d2,
+        "sum_d2": sum(d2) if d2 else 0,
+        "abs_sum_d2": sum(abs(x) for x in d2) if d2 else 0,
+        "center": center_value(d2) if d2 else None,
+        "laplacian": laplacian_at_center(d2),
+    }
+
+    if base == 2:
+        result["ones_count"] = sum(1 for d in digits if d == 1)
+        result["zeros_count"] = sum(1 for d in digits if d == 0)
+
+    return result
+
+
+def profile_multibase(name: str, value: int,
+                      bases: Optional[list[int]] = None) -> dict:
+    """Full tension profile across multiple bases. Integer input only.
+
+    Returns per-base profiles and cross-base invariance analysis.
+    """
+    if not isinstance(value, int):
+        raise TypeError(f"profile_multibase requires integer input, got {type(value)}")
+    if bases is None:
+        bases = MULTIBASE_BASES
+
+    profiles = {}
+    for b in bases:
+        profiles[b] = profile_base(name, value, b)
+
+    # Cross-base invariance check
+    invariants = {}
+    measures = ["sum_d2", "center", "laplacian"]
+    for m in measures:
+        vals = {b: profiles[b][m] for b in bases}
+        unique = set(v for v in vals.values() if v is not None)
+        if len(unique) == 1:
+            invariants[m] = unique.pop()
+
+    # Pairwise integer relationships between base centers
+    center_ratios = {}
+    for i, b1 in enumerate(bases):
+        for b2 in bases[i + 1:]:
+            c1 = profiles[b1].get("center")
+            c2 = profiles[b2].get("center")
+            if c1 is not None and c2 is not None and c2 != 0:
+                if c1 % c2 == 0:
+                    center_ratios[(b1, b2)] = ("exact_multiple", c1 // c2)
+                elif c2 % c1 == 0 and c1 != 0:
+                    center_ratios[(b1, b2)] = ("exact_divisor", c2 // c1)
+                elif c1 + c2 == 0:
+                    center_ratios[(b1, b2)] = ("negation", None)
+
+    return {
+        "name": name,
+        "value": value,
+        "bases": bases,
+        "profiles": profiles,
+        "invariants": invariants,
+        "center_ratios": center_ratios,
+    }
+
+
+def print_multibase(result: dict):
+    """Print a multi-base profile comparison."""
+    print(f"\n  {result['name']} = {result['value']}")
+    print(f"  {'base':>6} {'L':>4} {'sum_d2':>8} {'center':>8} {'∇²':>6}")
+    print(f"  {'-'*6} {'-'*4} {'-'*8} {'-'*8} {'-'*6}")
+    for b in result["bases"]:
+        p = result["profiles"][b]
+        lap = p["laplacian"] if p["laplacian"] is not None else "—"
+        ctr = p["center"] if p["center"] is not None else "—"
+        print(f"  {b:>6} {p['length']:>4} {p['sum_d2']:>8} {ctr:>8} {lap:>6}")
+
+    if result["invariants"]:
+        print(f"  invariants: {result['invariants']}")
+    if result["center_ratios"]:
+        for (b1, b2), (rel, val) in result["center_ratios"].items():
+            v_str = f"={val}" if val is not None else ""
+            print(f"  center({b1},{b2}): {rel}{v_str}")
+
+
+# =====================================================================
+# BINARY EXACT-ZERO CATALOGUE (§5 — P-004)
+# =====================================================================
+
+# Integer constants for binary analysis
+INTEGER_CONSTANTS = {
+    "c": 299792458,
+    "h_sig": 662607015,
+    "k_sig": 1380649,
+    "Na_sig": 602214076,
+    "e_sig": 1602176634,
+    "R_inf_sig": 10973731568539,
+    "P": 3485,
+    "omega": 3677,
+    "rho": 3163,
+    "fc": 192,
+}
+
+
+def binary_catalogue() -> dict:
+    """Build complete binary tension catalogue for all integer constants.
+
+    Records sum(Δ²), center(Δ²), length, ones_count for each.
+    Computes same-length pairwise dot products. Flags exact zeros.
+    """
+    profiles = {}
+    for name, val in INTEGER_CONSTANTS.items():
+        profiles[name] = profile_base(name, val, 2)
+
+    # Same-length pairwise dot products
+    dots = {}
+    exact_zeros = []
+    keys = list(INTEGER_CONSTANTS.keys())
+    for i, ka in enumerate(keys):
+        for kb in keys[i + 1:]:
+            pa, pb = profiles[ka], profiles[kb]
+            if pa["length"] == pb["length"] and pa["delta2"] and pb["delta2"]:
+                d = dot(pa["delta2"], pb["delta2"])
+                dots[(ka, kb)] = d
+                if d == 0:
+                    exact_zeros.append((ka, kb, pa["length"]))
+
+    # Self sum(Δ²) = 0 cases
+    sum_zeros = [(name, p["length"]) for name, p in profiles.items()
+                 if p["sum_d2"] == 0 and p["delta2"]]
+
+    return {
+        "profiles": profiles,
+        "dots": dots,
+        "exact_zeros": exact_zeros,
+        "sum_zeros": sum_zeros,
+    }
+
+
+def print_binary_catalogue(cat: dict):
+    """Print the binary catalogue results."""
+    print("=" * 70)
+    print("BINARY EXACT-ZERO CATALOGUE")
+    print("=" * 70)
+
+    print(f"\n  {'name':>12} {'bits':>5} {'ones':>5} {'zeros':>6}"
+          f" {'sum_d2':>8} {'center':>8}")
+    print(f"  {'-'*12} {'-'*5} {'-'*5} {'-'*6} {'-'*8} {'-'*8}")
+    for name, p in cat["profiles"].items():
+        ctr = p["center"] if p["center"] is not None else "—"
+        ones = p.get("ones_count", "—")
+        zeros = p.get("zeros_count", "—")
+        print(f"  {name:>12} {p['length']:>5} {ones:>5} {zeros:>6}"
+              f" {p['sum_d2']:>8} {ctr:>8}")
+
+    if cat["sum_zeros"]:
+        print(f"\n  sum(Δ²) = 0 exactly:")
+        for name, length in cat["sum_zeros"]:
+            print(f"    {name} (L={length})")
+
+    if cat["dots"]:
+        print(f"\n  Same-length pairwise dot(Δ²):")
+        for (ka, kb), d in sorted(cat["dots"].items(), key=lambda x: abs(x[1] or 0)):
+            marker = " *** EXACT ZERO ***" if d == 0 else ""
+            print(f"    {ka:>12} · {kb:<12} = {d}{marker}")
+
+    if cat["exact_zeros"]:
+        print(f"\n  EXACT ZERO DOT PRODUCTS: {len(cat['exact_zeros'])}")
+        for ka, kb, length in cat["exact_zeros"]:
+            print(f"    {ka} · {kb} (L={length})")
+
+
+# =====================================================================
+# NULL TEST PER BASE (§4 — P-004)
+# =====================================================================
+
+import random
+
+
+def null_test_base(base: int, n_trials: int = 1000,
+                   constants: Optional[dict] = None) -> dict:
+    """Run null test for dot-product structural hits in a given base.
+
+    Computes all pairwise dot(Δ²) for physics constants in the given base,
+    counts structural hits, then runs n_trials with random integers of
+    similar magnitude to establish baseline rates.
+    """
+    if constants is None:
+        constants = {
+            "c": 299792458,
+            "h_sig": 662607015,
+            "k_sig": 1380649,
+            "Na_sig": 602214076,
+            "e_sig": 1602176634,
+            "G_sig": 667430,
+            "alpha_sig": 72973525693,
+            "R_inf_sig": 10973731568539,
+        }
+
+    # Physics constants: profile in base, compute same-length dot products
+    physics_profiles = {}
+    for name, val in constants.items():
+        physics_profiles[name] = profile_base(name, val, base)
+
+    keys = list(constants.keys())
+    physics_dots = []
+    physics_hits = 0
+    physics_hit_details = []
+
+    for i, ka in enumerate(keys):
+        for kb in keys[i + 1:]:
+            pa, pb = physics_profiles[ka], physics_profiles[kb]
+            if pa["length"] == pb["length"] and pa["delta2"] and pb["delta2"]:
+                d = dot(pa["delta2"], pb["delta2"])
+                if d is not None:
+                    physics_dots.append(d)
+                    tag = structural_tag(d) or structural_tag(abs(d)) or structural_tag(-d)
+                    if tag:
+                        physics_hits += 1
+                        physics_hit_details.append((ka, kb, d, tag))
+
+    # Random trials: generate sets of 8 random integers with similar
+    # digit counts (in the given base) as the physics constants
+    lengths = [physics_profiles[k]["length"] for k in keys]
+    magnitudes = list(constants.values())
+
+    random_hits = []
+    for trial in range(n_trials):
+        trial_vals = []
+        for mag in magnitudes:
+            low = max(1, mag // 10)
+            high = mag * 10
+            trial_vals.append(random.randint(low, high))
+
+        trial_profiles = {}
+        for idx, v in enumerate(trial_vals):
+            trial_profiles[idx] = profile_base(f"r{idx}", v, base)
+
+        hits = 0
+        for i in range(len(trial_vals)):
+            for j in range(i + 1, len(trial_vals)):
+                pa, pb = trial_profiles[i], trial_profiles[j]
+                if pa["length"] == pb["length"] and pa["delta2"] and pb["delta2"]:
+                    d = dot(pa["delta2"], pb["delta2"])
+                    if d is not None:
+                        tag = structural_tag(d) or structural_tag(abs(d)) or structural_tag(-d)
+                        if tag:
+                            hits += 1
+        random_hits.append(hits)
+
+    random_mean = sum(random_hits) / len(random_hits)
+    random_std = (sum((x - random_mean) ** 2 for x in random_hits) / len(random_hits)) ** 0.5
+    z_score = (physics_hits - random_mean) / random_std if random_std > 0 else 0.0
+
+    return {
+        "base": base,
+        "n_trials": n_trials,
+        "n_constants": len(constants),
+        "n_physics_dots": len(physics_dots),
+        "physics_hits": physics_hits,
+        "physics_hit_details": physics_hit_details,
+        "random_mean": random_mean,
+        "random_std": random_std,
+        "z_score": z_score,
+        "verdict": "SIGNIFICANT" if z_score > 3.0 else "NOT_SIGNIFICANT",
+    }
+
+
+def null_test_all_bases(bases: Optional[list[int]] = None,
+                        n_trials: int = 1000) -> dict:
+    """Run null test across all bases."""
+    if bases is None:
+        bases = MULTIBASE_BASES
+    results = {}
+    for b in bases:
+        print(f"  running null test base {b}...", flush=True)
+        results[b] = null_test_base(b, n_trials)
+    return results
+
+
+def print_null_test(result: dict):
+    """Print a single base's null test result."""
+    print(f"\n  Base {result['base']}:")
+    print(f"    physics dots computed: {result['n_physics_dots']}")
+    print(f"    physics hits: {result['physics_hits']}")
+    print(f"    random mean: {result['random_mean']:.2f} ± {result['random_std']:.2f}")
+    print(f"    Z-score: {result['z_score']:.3f}")
+    print(f"    verdict: {result['verdict']}")
+    if result["physics_hit_details"]:
+        for ka, kb, d, tag in result["physics_hit_details"]:
+            print(f"      {ka}·{kb} = {d} → {tag}")
+
+
+def print_null_test_summary(results: dict):
+    """Print summary of all base null tests."""
+    print("=" * 70)
+    print("NULL TEST — ALL BASES")
+    print("=" * 70)
+    print(f"\n  {'base':>6} {'hits':>6} {'mean':>8} {'std':>8}"
+          f" {'Z':>8} {'verdict'}")
+    print(f"  {'-'*6} {'-'*6} {'-'*8} {'-'*8} {'-'*8} {'-'*14}")
+    for b, r in sorted(results.items()):
+        print(f"  {b:>6} {r['physics_hits']:>6} {r['random_mean']:>8.2f}"
+              f" {r['random_std']:>8.2f} {r['z_score']:>8.3f}"
+              f" {r['verdict']}")
+
+    sig_bases = [b for b, r in results.items() if r["verdict"] == "SIGNIFICANT"]
+    if len(sig_bases) >= 2:
+        print(f"\n  *** MULTI-BASE SIGNIFICANCE in bases: {sig_bases} ***")
+    elif len(sig_bases) == 1:
+        print(f"\n  Single-base significance only (base {sig_bases[0]})"
+              f" — possible encoding artifact")
+    else:
+        print(f"\n  No significance in any base — dot-product test lacks"
+              f" discrimination power here")
+
+
+# =====================================================================
 # DISPLAY
 # =====================================================================
 
@@ -635,6 +973,38 @@ def main():
             name, val, _ = resolve(key, length)
             p = profile(name, val, length)
             print_profile(p)
+    elif args[0] == "--multibase":
+        print("=" * 70)
+        print("MULTI-BASE TENSION PROFILES")
+        print("=" * 70)
+        targets = args[1:] if len(args) > 1 else list(INTEGER_CONSTANTS.keys())
+        for key in targets:
+            if key in INTEGER_CONSTANTS:
+                val = INTEGER_CONSTANTS[key]
+                result = profile_multibase(key, val)
+                print_multibase(result)
+            else:
+                name, val, _ = resolve(key, length)
+                if isinstance(val, int):
+                    result = profile_multibase(name, val)
+                    print_multibase(result)
+                else:
+                    print(f"  {key}: skipped (not integer)")
+    elif args[0] == "--binary":
+        cat = binary_catalogue()
+        print_binary_catalogue(cat)
+    elif args[0] == "--null-test":
+        bases = None
+        n_trials = 1000
+        if "--trials" in args:
+            idx = args.index("--trials")
+            n_trials = int(args[idx + 1])
+        if len(args) > 1 and args[1] != "--trials":
+            bases = [int(b) for b in args[1].split(",")]
+        results = null_test_all_bases(bases, n_trials)
+        print_null_test_summary(results)
+        for b, r in sorted(results.items()):
+            print_null_test(r)
     else:
         for key in args:
             name, val, _ = resolve(key, length)

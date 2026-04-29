@@ -435,11 +435,15 @@ def run_coupled_simulation(
         mirror_sign_psi=1.0, mirror_sign_omega=1.0,
         mirror_init=False, conjugate_init=False,
         no_pump=False,
-        single_shot=False):
+        single_shot=False,
+        force_device=None):
 
     run_id  = next_run_id()
     run_dir = setup_run_dir(run_id)
-    device  = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if force_device:
+        device = torch.device(force_device)
+    else:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if grid_size % 2 == 0:
         grid_size -= 1
@@ -780,6 +784,8 @@ if __name__ == '__main__':
                    help='Pump fires once at step 0, then field evolves freely')
     p.add_argument('--laplacian-only', action='store_true',
                    help='Pure diffusion: disable both pump AND propagation')
+    p.add_argument('--device', type=str, default=None,
+                   help='Force device: cpu or cuda (default: auto-detect)')
 
     args = p.parse_args()
 
@@ -816,4 +822,5 @@ if __name__ == '__main__':
         conjugate_init   = args.conjugate_init,
         no_pump          = 'laplacian_only' if args.laplacian_only else args.no_pump,
         single_shot      = args.single_shot,
+        force_device     = args.device,
     )

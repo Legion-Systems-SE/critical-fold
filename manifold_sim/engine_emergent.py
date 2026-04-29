@@ -500,8 +500,13 @@ class EnergyTracker:
         self.total_psi_abs_2    = []
         self.exchange_flux_psi  = []
         self.exchange_flux_omega = []
+        self.pole_lat           = []
+        self.pole_lon           = []
+        self.pole_strength      = []
+        self.pole_r             = []
 
-    def record(self, step, omega1, omega2, psi1, psi2, flux_psi, flux_omega):
+    def record(self, step, omega1, omega2, psi1, psi2, flux_psi, flux_omega,
+               X=None, Y=None, Z=None, R=None, membrane=None):
         self.steps.append(step)
         self.total_omega_1.  append(float(omega1.sum().item()))
         self.total_omega_2.  append(float(omega2.sum().item()))
@@ -510,15 +515,46 @@ class EnergyTracker:
         self.exchange_flux_psi.  append(flux_psi)
         self.exchange_flux_omega.append(flux_omega)
 
+        if X is not None and membrane is not None:
+            shell = (R > 2.5) & (R < 4.5)
+            w = omega1[shell]
+            w_sum = w.sum().item()
+            if w_sum > 1e-10:
+                cx = float((X[shell] * w).sum().item() / w_sum)
+                cy = float((Y[shell] * w).sum().item() / w_sum)
+                cz = float((Z[shell] * w).sum().item() / w_sum)
+                r_c = math.sqrt(cx*cx + cy*cy + cz*cz)
+                if r_c > 1e-10:
+                    lat = math.degrees(math.asin(max(-1, min(1, cz / r_c))))
+                    lon = math.degrees(math.atan2(cy, cx))
+                    self.pole_lat.append(lat)
+                    self.pole_lon.append(lon)
+                    self.pole_strength.append(r_c)
+                    self.pole_r.append(float((R[shell] * w).sum().item() / w_sum))
+                    return
+            self.pole_lat.append(0.0)
+            self.pole_lon.append(0.0)
+            self.pole_strength.append(0.0)
+            self.pole_r.append(0.0)
+        else:
+            self.pole_lat.append(0.0)
+            self.pole_lon.append(0.0)
+            self.pole_strength.append(0.0)
+            self.pole_r.append(0.0)
+
     def save(self, run_dir):
-        np.savez(os.path.join(run_dir, 'energy.npz'),
+        np.savez(os.path.join(run_dir, 'energy.npz',),
                  steps=np.array(self.steps),
                  total_omega_1=np.array(self.total_omega_1),
                  total_omega_2=np.array(self.total_omega_2),
                  total_psi_abs_1=np.array(self.total_psi_abs_1),
                  total_psi_abs_2=np.array(self.total_psi_abs_2),
                  exchange_flux_psi=np.array(self.exchange_flux_psi),
-                 exchange_flux_omega=np.array(self.exchange_flux_omega))
+                 exchange_flux_omega=np.array(self.exchange_flux_omega),
+                 pole_lat=np.array(self.pole_lat),
+                 pole_lon=np.array(self.pole_lon),
+                 pole_strength=np.array(self.pole_strength),
+                 pole_r=np.array(self.pole_r))
 
 
 # =============================================================================
@@ -597,11 +633,19 @@ def run_emergent_simulation(
         t_offset=0.0,
         sigma=0.5,
         time_sig=(4, 4),
-        cross_rhythm=None):
+        cross_rhythm=None,
+        force_device=None,
+        ternary=False,
+        quant_levels=None,
+        save_fields=False,
+        perturb=0.0):
 
     run_id  = next_run_id()
     run_dir = setup_run_dir(run_id)
-    device  = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if force_device:
+        device = torch.device(force_device)
+    else:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     if auto and bifurcation == 'zeta':
         scale = compute_auto_scale(t_offset=t_offset)
@@ -702,6 +746,13 @@ def run_emergent_simulation(
         cross_detune = None
         beat_period = None
 
+    # Dipole perturbation — breaks cubic symmetry for pole tracking
+    if perturb > 0:
+        amp = perturb * float(omega1.mean().item())
+        omega1 = omega1 + amp * (Z / (R + dx))
+        omega1 = torch.relu(omega1)
+        print(f"  PERTURB: dipole along z-axis, amplitude {amp:.6f} ({perturb*100:.1f}% of mean)")
+
     # Metric from field — the fields ARE the geometry
     g_mu_nu = build_metric_from_field(omega1, omega2, rates['metric_floor'])
 
@@ -749,6 +800,8 @@ def run_emergent_simulation(
         },
         'membrane_type':     'dynamic_curvature_zero',
         'membrane_sigma':    sigma,
+        'ternary_exchange':  ternary,
+        'quant_levels':      quant_levels,
         'use_laplacian':     use_laplacian,
         'use_exchange':      use_exchange,
         'use_advection':     use_advection,
@@ -771,7 +824,7 @@ def run_emergent_simulation(
     tracker = EnergyTracker()
     clouds  = CloudRecorder()
 
-    del X, Y, Z, c
+    del c  # keep X, Y, Z for pole tracking
 
     print(f"\n--- RUNNING --- (n_eff={n_eff:.1f}, registry={n_registry:,})")
     print(f"{'Step':>6} | {'Σω₁':>10} | {'Σω₂':>10} | "
@@ -825,8 +878,24 @@ def run_emergent_simulation(
         if use_exchange:
             membrane, L1, L2 = compute_membrane(omega1, omega2, sigma)
 
-            delta_omega = membrane * rates['_base'] * (omega1 - omega2)
-            delta_psi   = membrane * rates['_base'] * (psi1 - psi2)
+            if quant_levels is not None:
+                m_gate = (membrane > 0.5).float()
+                if quant_levels <= 3:
+                    q_omega = torch.sign(omega1 - omega2)
+                    q_psi   = torch.sign(psi1 - psi2)
+                else:
+                    half_n = (quant_levels - 1) // 2
+                    raw_o = omega1 - omega2
+                    raw_p = psi1 - psi2
+                    o_scale = raw_o.abs().max() + 1e-10
+                    p_scale = raw_p.abs().max() + 1e-10
+                    q_omega = torch.round(raw_o / o_scale * half_n).clamp(-half_n, half_n) / half_n
+                    q_psi   = torch.round(raw_p / p_scale * half_n).clamp(-half_n, half_n) / half_n
+                delta_omega = m_gate * rates['_base'] * q_omega
+                delta_psi   = m_gate * rates['_base'] * q_psi
+            else:
+                delta_omega = membrane * rates['_base'] * (omega1 - omega2)
+                delta_psi   = membrane * rates['_base'] * (psi1 - psi2)
 
             omega1 = torch.relu(omega1 - delta_omega)
             omega2 = torch.relu(omega2 + delta_omega)
@@ -848,7 +917,8 @@ def run_emergent_simulation(
         # Energy tracking — every probe_interval
         if i % probe_interval == 0:
             tracker.record(i, omega1, omega2, psi1, psi2,
-                           flux_psi, flux_omega)
+                           flux_psi, flux_omega,
+                           X=X, Y=Y, Z=Z, R=R, membrane=membrane)
 
         # Cloud snapshots — variable schedule
         is_last = (not auto and i == steps - 1)
@@ -912,6 +982,15 @@ def run_emergent_simulation(
     meta['total_steps']  = final_step + 1
     meta['auto_stopped']  = auto_stopped if auto else None
     meta['wall_seconds'] = round(wall_elapsed, 1)
+
+    if save_fields:
+        np.savez(os.path.join(run_dir, 'fields.npz'),
+                 omega1=omega1.cpu().numpy(),
+                 omega2=omega2.cpu().numpy(),
+                 psi1=psi1.cpu().numpy(),
+                 psi2=psi2.cpu().numpy(),
+                 membrane=membrane.cpu().numpy() if membrane is not None else np.array([]))
+        print(f"  Fields saved to {run_dir}/fields.npz")
 
     tracker.save(run_dir)
     clouds.save(run_dir)
@@ -993,6 +1072,16 @@ if __name__ == '__main__':
                    help='Time signature for beat modulation (default: 4/4)')
     p.add_argument('--cross-rhythm', type=str, default=None,
                    help='Second time sig for polyrhythmic modulation (e.g., 3/2)')
+    p.add_argument('--device',       type=str, default=None,
+                   help='Force device: cpu or cuda (default: auto-detect)')
+    p.add_argument('--ternary',      action='store_true',
+                   help='Quantize membrane exchange to {-1, 0, +1}')
+    p.add_argument('--quant',        type=int, default=None,
+                   help='Quantize exchange to N levels: 1=binary, 3=ternary, 5=quinary, ...')
+    p.add_argument('--save-fields',  action='store_true',
+                   help='Save full omega1, omega2, membrane tensors at final step')
+    p.add_argument('--perturb',      type=float, default=0.0,
+                   help='Dipole perturbation amplitude (fraction of mean field)')
 
     args = p.parse_args()
 
@@ -1017,4 +1106,9 @@ if __name__ == '__main__':
         sigma          = args.sigma,
         time_sig       = tuple(int(x) for x in args.time_sig.split('/')),
         cross_rhythm   = tuple(int(x) for x in args.cross_rhythm.split('/')) if args.cross_rhythm else None,
+        force_device   = args.device,
+        ternary        = args.ternary,
+        quant_levels   = args.quant if args.quant else (3 if args.ternary else None),
+        save_fields    = args.save_fields,
+        perturb        = args.perturb,
     )
