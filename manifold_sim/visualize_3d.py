@@ -224,7 +224,7 @@ def main():
     parser = argparse.ArgumentParser(description='3D Resonant Field Visualizer')
     parser.add_argument('--run', type=str, default=None)
     parser.add_argument('--step', type=int, default=0)
-    parser.add_argument('--color', choices=['omega', 'phase', 'shell', 'active'],
+    parser.add_argument('--color', choices=['omega', 'phase', 'shell', 'active', 'body'],
                         default='phase')
     parser.add_argument('--output', type=str, default='field_3d.html')
     args = parser.parse_args()
@@ -290,6 +290,22 @@ def main():
         active_mask = values[:n] > 0.5
         colors[active_mask, :] = [0.2, 0.9, 0.3]    # green
         colors[~active_mask, :] = [0.25, 0.25, 0.3]  # gray
+
+    elif args.color == 'body':
+        fid_path = run_dir / 'field_ids.npy'
+        if fid_path.exists():
+            fids = np.load(str(fid_path))
+            body_a = fids == 0
+            body_b = fids == 1
+            colors[body_a, :] = [0.1, 0.6, 0.9]     # blue — body A
+            colors[body_b, :] = [0.95, 0.4, 0.15]    # orange — body B
+            if values is not None:
+                dead = values[:n] < 0.5
+                colors[dead] *= 0.3
+            print(f"  Color: body (A={int(body_a.sum())} blue, "
+                  f"B={int(body_b.sum())} orange)")
+        else:
+            print("  No field_ids.npy — falling back to gray")
 
     # Sizes
     sizes = np.ones(n) * 0.15

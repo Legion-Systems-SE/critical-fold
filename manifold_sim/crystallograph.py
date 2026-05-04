@@ -37,7 +37,7 @@ SCRIPT_DIR = Path(__file__).parent.resolve()
 
 def resolve_run_dir(run_arg):
     if not run_arg:
-        for base in ['runs_emergent', 'runs_coupled', 'runs']:
+        for base in ['runs_twobody', 'runs_emergent', 'runs_coupled', 'runs']:
             latest = SCRIPT_DIR / base / "latest.txt"
             if latest.exists():
                 return SCRIPT_DIR / base / latest.read_text().strip()
@@ -45,7 +45,7 @@ def resolve_run_dir(run_arg):
     p = Path(run_arg)
     if p.exists():
         return p
-    for base in ['runs_emergent', 'runs_coupled']:
+    for base in ['runs_twobody', 'runs_emergent', 'runs_coupled']:
         candidate = SCRIPT_DIR / base / f"{int(run_arg):04d}"
         if candidate.exists():
             return candidate
@@ -53,7 +53,7 @@ def resolve_run_dir(run_arg):
 
 
 def to_sim_space(coords_idx, grid_size):
-    return (coords_idx.astype(np.float64) - grid_size / 2.0) * (20.0 / grid_size)
+    return (coords_idx.astype(np.float64) - grid_size // 2) * (20.0 / (grid_size - 1))
 
 
 def load_run(run_dir, step=0):
@@ -105,6 +105,23 @@ def compute_colors(positions, phase, values, mode):
         colors[active] = [0.2, 0.9, 0.3]
         colors[~active] = [0.25, 0.25, 0.3]
 
+    return colors
+
+
+def compute_colors_body(positions, values, run_dir):
+    n = len(positions)
+    colors = np.ones((n, 3)) * 0.5
+    fid_path = run_dir / 'field_ids.npy'
+    if not fid_path.exists():
+        return colors
+    fids = np.load(str(fid_path))
+    body_a = fids == 0
+    body_b = fids == 1
+    colors[body_a] = [0.1, 0.6, 0.9]
+    colors[body_b] = [0.95, 0.4, 0.15]
+    if values is not None:
+        dead = values[:n] < 0.5
+        colors[dead] *= 0.3
     return colors
 
 
@@ -426,7 +443,7 @@ def main():
     parser = argparse.ArgumentParser(description='Crystallograph — Rotational Moiré Viewer')
     parser.add_argument('--run', type=str, default=None)
     parser.add_argument('--step', type=int, default=0)
-    parser.add_argument('--color', choices=['shell', 'phase', 'omega', 'active'], default='shell')
+    parser.add_argument('--color', choices=['shell', 'phase', 'omega', 'active', 'body'], default='shell')
     parser.add_argument('--speed', type=float, default=0.5)
     parser.add_argument('--output', type=str, default=None)
     args = parser.parse_args()
@@ -435,7 +452,10 @@ def main():
     print(f"Run: {run_dir}")
 
     positions, phase, values, meta = load_run(run_dir, args.step)
-    colors = compute_colors(positions, phase, values, args.color)
+    if args.color == 'body':
+        colors = compute_colors_body(positions, values, run_dir)
+    else:
+        colors = compute_colors(positions, phase, values, args.color)
     print(f"  Nodes: {len(positions)} | Color: {args.color} | Step: {args.step}")
 
     html = generate_crystallograph_html(positions, colors, meta, args.speed)

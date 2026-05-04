@@ -139,6 +139,12 @@ python3 manifold_sim/engine_emergent.py --steps 100 --grid 65
 | `analyze.py` | Post-run analysis dispatcher (summary, prime, symmetry, voids, voronoi, phases) |
 | `pole_reality_test.py` | S3 beat detune verification against IGRF-14 pole data |
 
+### Related
+
+| Repo | Purpose |
+|---|---|
+| [upc-calculator](https://github.com/Legion-Systems-SE/upc-calculator) | Standalone digit-curvature resonance test — extracts the tension framework into a self-contained tool with statistical controls |
+
 ### Supporting tools
 
 | Script | Purpose |

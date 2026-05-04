@@ -51,6 +51,7 @@ CONSTANTS = {
     "omega": (3677,               "vector length (prime)"),
     "rho":   (3163,               "primitive root (C-P) mod Ω"),
     "fc":    (192,                "forbidden center"),
+    "sharp": (23456789,           "zero-tension prime (digits 2–9, Δ²≡0)"),
 }
 
 # Engine structural constants for cross-referencing
