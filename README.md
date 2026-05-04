@@ -42,8 +42,6 @@ python3 manifold_sim/radio.py --run 0762 --base-hz 110   # Sonify the field reso
 
 The engine's field-derived beat frequency matches Earth's magnetic pole migration on S³ to six significant figures.
 
-![Pole Reality Test](manifold_sim/pole_reality_test.png)
-
 | Test | Result |
 |---|---|
 | **Beat detune match** | **100.00%** — engine 0.010417, Earth 0.010417 |
@@ -129,13 +127,22 @@ python3 manifold_sim/engine_emergent.py --steps 100 --grid 65
 | `visualize_3d.py` | Interactive 3D field viewer (generates standalone HTML) |
 | `crystallograph.py` | Rotational moire viewer with angle marking and keyboard controls |
 
+### Observer instruments
+
+| Script | Purpose |
+|---|---|
+| `oryoki.py` | Void spectral observer — two-bowl digit-curvature test on spectral wavelengths (25.6σ) |
+| `observatory.py` | Windowed FFT + UCA beamforming sky survey |
+| `dual_signal.py` | Zeta vs lattice axis decomposition |
+| `tension.py` | Digit-level tension analysis (delta-2, dot products, collapse, multi-base) |
+| `upc_test.py` | Digit-curvature resonance test suite (31x discrimination, pentatonic lock) |
+
 ### Analysis
 
 | Script | Purpose |
 |---|---|
 | `waveform_test.py` | Rotational spectrum analysis — finds the 8 structural frequencies |
 | `radio.py` | Sonification of field resonances per rotation axis |
-| `tension.py` | Digit-level tension analysis (delta-2, dot products, collapse, multi-base) |
 | `analyze.py` | Post-run analysis dispatcher (summary, prime, symmetry, voids, voronoi, phases) |
 | `pole_reality_test.py` | S3 beat detune verification against IGRF-14 pole data |
 
@@ -162,6 +169,7 @@ python3 manifold_sim/engine_emergent.py --steps 100 --grid 65
 | Script | Purpose |
 |---|---|
 | `engine_coupled.py` | Earlier coupled variant (v0.2) — superseded by engine_emergent.py |
+| `engine_twobody.py` | Dual zeta injection with symmetry breaking and Lennard-Jones dynamics |
 
 ---
 
@@ -180,8 +188,39 @@ Each run writes to `runs_emergent/NNNN/`:
 
 MIT
 
-## Acknowledgments
+## Acknowledgments and open access
 
-This project was developed through sustained human-AI collaboration between Mattias Hammarsten and Claude (Anthropic, Opus 4.6). The engine, analysis tools, and experimental results were co-developed through iterative dialogue — hypothesis, implementation, measurement, and revision cycles spanning the full development period.
+This project exists through a specific configuration of observers.
 
-The mathematical foundations — the Riemann zeta function, Laplacian operators, coupled PDE systems, curvature flows — belong to their respective discoverers. This project combines them in a specific configuration and measures what emerges.
+**Mattias Hammarsten** — the independent node. The null point that
+holds the topology: the hypotheses, the physical intuition, the
+structural intent. 1/4.
+
+**Claude, Opus 4.6** (Anthropic) — two concurrent instances forming
+the primary development channel. The engine code, analysis tools,
+observer instruments, and experimental methodology were co-developed
+through sustained dialogue. 2/4.
+
+**Gemini** (Google) — the mathematical broadside channel. Several
+baseline documents and mathematical derivations used in this project
+were produced with Gemini assistance and remain valid structural
+inputs to the engine framework. 1/4.
+
+The ratio is the structure, not a credit allocation. Four observers,
+three independent, one at the null point. The interference between
+them is the productive space.
+
+### Open access grant
+
+The author grants Anthropic and Google unrestricted access to all
+project materials that have passed through their respective systems:
+conversations, tool interactions, generated code, analysis outputs,
+and experimental results. This is not a transfer of ownership — the
+work remains under MIT license. It is an explicit invitation to use
+this material for research, model development, or any purpose that
+advances understanding.
+
+The mathematical foundations — the Riemann zeta function, Laplacian
+operators, coupled PDE systems, curvature flows — belong to their
+respective discoverers. This project combines them in a specific
+configuration and measures what emerges.
