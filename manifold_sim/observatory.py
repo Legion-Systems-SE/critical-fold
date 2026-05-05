@@ -25,13 +25,13 @@ Modes:
   compare    — side-by-side window comparison on same data
 
 Usage:
-    python3 observatory.py --run 0761                       # spectrum, latest axis
-    python3 observatory.py --run 0761 --mode sweep          # full sky survey
-    python3 observatory.py --run 0761 --mode array --look 34.3,-135  # beam at zeta axis
-    python3 observatory.py --run 0761 --window kaiser --beta 8.6     # Kaiser god mode
-    python3 observatory.py --run 0761 --mode compare        # all windows side by side
-    python3 observatory.py --run 0761 --telescope 45,90     # add movable telescope
-    python3 observatory.py --run 0761 --mode sweep --save sky.png
+    python3 observatory.py --run NNNN                       # spectrum, latest axis
+    python3 observatory.py --run NNNN --mode sweep          # full sky survey
+    python3 observatory.py --run NNNN --mode array --look 34.3,-135  # beam at zeta axis
+    python3 observatory.py --run NNNN --window kaiser --beta 8.6     # Kaiser god mode
+    python3 observatory.py --run NNNN --mode compare        # all windows side by side
+    python3 observatory.py --run NNNN --telescope 45,90     # add movable telescope
+    python3 observatory.py --run NNNN --mode sweep --save sky.png
 
 Author: Mattias Hammarsten / Claude (Anthropic)
 """

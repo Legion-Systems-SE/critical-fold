@@ -21,8 +21,8 @@ Controls (in browser):
     F           — toggle fullscreen HUD
 
 Usage:
-    python3 crystallograph.py --run runs_emergent/0761 --color shell
-    python3 crystallograph.py --run runs_emergent/0761 --color phase --speed 0.3
+    python3 crystallograph.py --run runs_emergent/NNNN --color shell
+    python3 crystallograph.py --run runs_emergent/NNNN --color phase --speed 0.3
 
 Author: Mattias Hammarsten / Claude (Anthropic)
 """

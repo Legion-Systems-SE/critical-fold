@@ -136,6 +136,25 @@ Three convergent outputs — one project, three faces:
 - **Zenodo** — academic record. DOI-bearing publications. Community: 
   "The Latent Tension Equation"
 
+## How to Run
+
+The emergent engine MUST be run with zeta bifurcation and auto mode:
+
+    python3 manifold_sim/engine_emergent.py --bifurcation zeta --auto 2>&1 | tee /mnt/manifold_sim/probe_data/logs/run_$(date +%Y%m%d_%H%M%S).log
+
+- `--bifurcation zeta` — seeds via ζ(1/2+it) sign changes. Without 
+  this the field collapses early
+- `--auto` — field determines scale, grid, timing, and stop criterion. 
+  Auto-derives beat period (96 steps) and stops when exchange flux 
+  stabilizes over 2 consecutive periods
+
+Quick test (code verification only — NOT for analysis):
+
+    python3 manifold_sim/engine_emergent.py --steps 100 --grid 65 --bifurcation zeta
+
+ALWAYS tee engine output to a log file. Patterns in scrolling numbers 
+have led to major discoveries. Never truncate.
+
 ## Run Output Contract
 
 Every run writes to `runs_*/NNNN/`:
@@ -144,11 +163,6 @@ Every run writes to `runs_*/NNNN/`:
 - `phase.npy` — (N,) float complex-phase
 - `energy.npz` — per-step totals
 - `clouds.npz` — per-step spatial snapshots (bulk of storage)
-
-ALWAYS tee engine output to a log file. Patterns in scrolling numbers 
-have led to major discoveries. Never truncate:
-
-    python3 manifold_sim/engine_emergent.py --steps 500 2>&1 | tee /mnt/manifold_sim/probe_data/logs/run_$(date +%Y%m%d_%H%M%S).log
 
 ## Hardware
 

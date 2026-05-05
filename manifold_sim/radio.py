@@ -16,8 +16,8 @@ Output (to audio_output/):
 
 Usage:
     python3 manifold_sim/radio.py
-    python3 manifold_sim/radio.py --run 0761 --base-hz 110
-    python3 manifold_sim/radio.py --run 0762 --base-hz 55 --duration 8
+    python3 manifold_sim/radio.py --run NNNN --base-hz 110
+    python3 manifold_sim/radio.py --run NNNN --base-hz 55 --duration 8
 """
 
 import numpy as np
@@ -66,7 +66,7 @@ def write_stereo_wav(filename, left, right, fs=FS):
         wf.writeframes(sig16.tobytes())
 
 
-# ── Field analysis (from waveform_test.py) ───────────────────────────
+# ── Field analysis ───────────────────────────────────────────────────
 
 def load_positions(run_dir):
     registry = np.load(str(run_dir / 'registry.npy')).astype(np.float64)

@@ -18,7 +18,7 @@ Modes:
 
 Usage:
     python dual_signal.py                          # latest run
-    python dual_signal.py --run runs_emergent/0761
+    python dual_signal.py --run runs_emergent/NNNN
     python dual_signal.py --sweep                  # injection sweep n=5→50
     python dual_signal.py --sweep --grid 89        # specific grid
     python dual_signal.py --sweep --grids 65,89,97

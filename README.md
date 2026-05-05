@@ -49,8 +49,7 @@ both face and diagonal channels to a single generator: powers of 2.
 Four falsifiable predictions included. Full details: **[FINDINGS.md](FINDINGS.md)**
 
 ```bash
-python3 manifold_sim/waveform_test.py                    # Reproduce frequency analysis
-python3 manifold_sim/radio.py --run 0762 --base-hz 110   # Sonify the field resonances
+python3 manifold_sim/radio.py --base-hz 110              # Sonify field resonances (uses latest run)
 ```
 
 ### Crystallograph captures
@@ -106,8 +105,8 @@ At sigma = 0.5, the two fields maintain productive asymmetry through sustained e
 # Default: auto mode, field determines everything
 python3 manifold_sim/engine_emergent.py --bifurcation zeta --auto
 
-# Quick test
-python3 manifold_sim/engine_emergent.py --steps 100 --grid 65
+# Quick test (code verification only — NOT for analysis)
+python3 manifold_sim/engine_emergent.py --steps 100 --grid 65 --bifurcation zeta
 
 # With pole tracking
 python3 manifold_sim/engine_emergent.py --bifurcation zeta --auto --perturb 0.1
@@ -127,7 +126,7 @@ pip install -r requirements.txt
 
 Or manually: `pip install torch numpy scipy sympy matplotlib mpmath`
 
-CUDA recommended for the engine but not required. The analysis tools (waveform_test, radio, tension, crystallograph) run on CPU with NumPy + SciPy only.
+CUDA recommended for the engine but not required. The analysis tools (radio, tension, crystallograph) run on CPU with NumPy + SciPy only.
 
 ### Clone and run
 
@@ -135,7 +134,7 @@ CUDA recommended for the engine but not required. The analysis tools (waveform_t
 git clone https://github.com/Legion-Systems-SE/critical-fold.git
 cd critical-fold
 pip install -r requirements.txt
-python3 manifold_sim/engine_emergent.py --steps 100 --grid 65
+python3 manifold_sim/engine_emergent.py --bifurcation zeta --auto
 ```
 
 ---
@@ -165,7 +164,6 @@ python3 manifold_sim/engine_emergent.py --steps 100 --grid 65
 | Script | Purpose |
 |---|---|
 | `cage_hypothesis.py` | 6-prime cage falsification suite — 7 tests, counting ratio, α base boundary |
-| `waveform_test.py` | Rotational spectrum analysis — finds the 8 structural frequencies |
 | `radio.py` | Sonification of field resonances per rotation axis |
 | `analyze.py` | Post-run analysis dispatcher (summary, prime, symmetry, voids, voronoi, phases) |
 | `pole_reality_test.py` | S3 beat detune verification against IGRF-14 pole data |

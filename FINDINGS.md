@@ -52,10 +52,9 @@ set. The diagonal set is built exclusively from {3, 5}.
 
 **Reproduce:**
 ```
-python3 manifold_sim/engine_emergent.py --steps 100 --grid 45
-python3 manifold_sim/engine_emergent.py --steps 100 --grid 65
-python3 manifold_sim/engine_emergent.py --steps 100 --grid 89
-python3 manifold_sim/waveform_test.py
+python3 manifold_sim/engine_emergent.py --bifurcation zeta --auto --grid 45
+python3 manifold_sim/engine_emergent.py --bifurcation zeta --auto --grid 65
+python3 manifold_sim/engine_emergent.py --bifurcation zeta --auto --grid 89
 ```
 
 ---
@@ -105,7 +104,7 @@ face-exclusive prime is also the phase-invariant frequency.
 
 **Reproduce:**
 ```
-python3 manifold_sim/radio.py --run 0762 --base-hz 110
+python3 manifold_sim/radio.py --base-hz 110
 ```
 
 ---
@@ -243,7 +242,6 @@ python3 manifold_sim/tension.py  # full demo
 | Script | Purpose |
 |--------|---------|
 | `engine_emergent.py` | Generate node clouds (v0.4+, no imported zeros) |
-| `waveform_test.py` | Rotational spectrum analysis across grid sizes |
 | `radio.py` | Sonification of field resonances per axis |
 | `crystallograph.py` | Interactive 3D rotation viewer with angle marking |
 | `tension.py` | Digit encoding, Delta-2, prime factorization, collapse chains |
@@ -269,4 +267,4 @@ independent verification.
 
 *Generated from the Critical Fold Engine, a dual-channel scalar field
 simulator seeded by Riemann zeta zeros.*
-*Engine: emergent-fold-0.4-final | Grids: 45, 65, 89 | Runs: 0761-0763*
+*Engine: emergent-fold-0.4-final | Grids: 45, 65, 89*
