@@ -28,7 +28,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
-def resolve_run_dir(run_arg, base='runs_coupled'):
+def resolve_run_dir(run_arg, base='runs_emergent'):
     runs_dir = SCRIPT_DIR / base
     if run_arg:
         if run_arg.isdigit():
